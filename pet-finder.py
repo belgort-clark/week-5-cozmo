@@ -6,6 +6,8 @@ import os
 import time
 import logging
 import boto3
+from pprint import pprint
+import image_helpers
 from botocore.exceptions import ClientError
 
 detected = False
@@ -46,6 +48,16 @@ def on_new_camera_image(evt, **kwargs):
                 print('Waiting for image...')
                 if upload_file('pictures/fromcozmo.jpg','ctec280'):
                     print('File uploaded successfully!') 
+                # now identify image
+                # grab the image from URL
+                client = boto3.client('rekognition')
+                imgurl = 'https://s3.amazonaws.com/ctec280/pictures/fromcozmo.jpg'
+                imgbytes = image_helpers.get_image_from_url(imgurl)
+                print('Sending to AWS Rekognition...')
+                rekresp = client.detect_labels(Image={'Bytes': imgbytes},MinConfidence=75)
+                print('Here are the results from Rekognition:')
+                #pprint(rekresp)
+                pprint(rekresp['Labels'])
 
 
 def on_new_pet_detected(evt, **kwargs):
@@ -53,7 +65,6 @@ def on_new_pet_detected(evt, **kwargs):
     #     print("{0} = {1}".format(key, value))
     print('I see a',kwargs['pet'].pet_type)
     global detected
-    global processing
     global takePicture
     detected = True
     takePicture = True
@@ -71,8 +82,9 @@ def cozmo_program(robot: cozmo.robot.Robot):
     robot.add_event_handler(cozmo.world.EvtNewCameraImage, on_new_camera_image)
 
     while not detected:
-    #  robot.turn_in_place(degrees(45))
-       time.sleep(5)
+        pass
+    #   robot.turn_in_place(degrees(45))
+    #   time.sleep(5)
 
     if detected == True:    
         robot.drive_straight(distance_mm(250), speed_mmps(150)).wait_for_completed()
